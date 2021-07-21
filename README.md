@@ -88,3 +88,73 @@ The values (tag : metadata) of respective keys are concatenated into a single st
       df['MetadataInfo'][df['Image_name'] == keys] = values
 
 
+Now he important part, rendering or inserting the image into pandas dataframe. This is done using HTML "<img src="">" tag.
+
+The below functions return the thumbail of the image present at the provided location. The image is resized into (512x512) and returned as the thumbnail.
+The if statement hanndles the indices that are not defined ins the dataset of the image id. 
+
+        def get_thumbnail_unrotated(path):
+            if path == "":
+              return ""
+
+            i = Image.open(path)
+            i = i.resize(size=(512,512))
+            i.thumbnail((512, 512), Image.LANCZOS)
+            return i
+            
+This function is same as above, just modified as it rotates the image 90 degree in clockwise direction.
+
+        def get_thumbnail_rotated(path):
+            if path == "":
+              return ""
+              
+            i = Image.open(path)
+            i = i.resize(size=(512,512))
+            i = i.rotate(angle=-90)
+            i.thumbnail((512, 512), Image.LANCZOS)
+            return i
+
+Thes functions are the HTML formatters that return the tag "<img src="">" with image path as the src location.
+
+        def image_formatter_unrotated(im):
+            if im == "":
+              return 0
+            return f'<img src="data:image/jpeg;base64,{image_base64_unrotated(im)}">'
+        
+        def image_formatter_rotated(im):
+            if im == "":
+              return 0
+            return f'<img src="data:image/jpeg;base64,{image_base64_rotate(im)}">'
+
+These functions check for the path, if its string then they convert the path into a thumbnail, otherwise it writes data in memory buffer and decodes the buffer using base64encode (utf-8)
+
+        def image_base64_unrotated(im):
+            if isinstance(im, str):
+                im = get_thumbnail_unrotated(im)
+            with BytesIO() as buffer:
+                im.save(buffer, 'jpeg')
+                return base64.b64encode(buffer.getvalue()).decode()
+                
+        def image_base64_rotate(im):
+            if isinstance(im, str):
+                im = get_thumbnail_rotated(im)
+            with BytesIO() as buffer:
+                im.save(buffer, 'jpeg')
+                return base64.b64encode(buffer.getvalue()).decode()
+
+A new column a inserted into the dataframe that contains the image file path.
+
+        # Saving the file path of the images
+        df['file_1'] = df.Image_name.map(lambda id: contradiction(id))
+
+        # converting the path of the image to the HTML tag for rotated and 
+        # unrotated image
+        df['Resized Image'] = df.file_1.map(lambda f: get_thumbnail_unrotated(f))
+        df['Rotated Image'] = df.file_1.map(lambda f: get_thumbnail_rotated(f))
+        df.head()
+        
+Now, the dataframe is completed using following function that converts the "<img src="">" tag to the image.
+
+        HTML(df[["Image_name","Resized Image","Rotated Image",'MetadataInfo']].to_html(formatters={'Resized Image': image_formatter_unrotated, 'Rotated Image':image_formatter_rotated}, escape=False))
+        
+        ![image](https://user-images.githubusercontent.com/55994140/126458187-b9c0eca0-55fd-4e18-8afd-dcdcdd6befec.png)
